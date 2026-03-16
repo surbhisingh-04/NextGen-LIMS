@@ -1,8 +1,7 @@
-import { DataTableCard } from "@/components/dashboard/data-table-card";
 import { ModuleLinkGrid } from "@/components/dashboard/module-link-grid";
 import { ModulePage } from "@/components/dashboard/module-page";
-import { QualityTable } from "@/components/dashboard/tables";
-import { qualityEvents } from "@/lib/demo-data";
+import { QcReviewPanel } from "@/components/workflows/qc-review-panel";
+import { getDashboardData, getQcReviewResults } from "@/lib/queries";
 
 const qualityModules = [
   {
@@ -17,7 +16,9 @@ const qualityModules = [
   }
 ];
 
-export default function QualityPage() {
+export default async function QualityPage() {
+  const [data, reviewResults] = await Promise.all([getDashboardData(), getQcReviewResults()]);
+
   return (
     <ModulePage
       eyebrow="Quality"
@@ -25,9 +26,7 @@ export default function QualityPage() {
       description="This route completes the platform tree for quality-focused navigation and keeps event visibility centralized."
     >
       <ModuleLinkGrid items={qualityModules} />
-      <DataTableCard title="Open quality events" description="Deviation, OOS, and CAPA records currently in play">
-        <QualityTable rows={qualityEvents} />
-      </DataTableCard>
+      <QcReviewPanel reviewResults={reviewResults} qualityEvents={data.qualityEvents} />
     </ModulePage>
   );
 }

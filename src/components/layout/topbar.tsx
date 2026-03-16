@@ -20,6 +20,49 @@ import { getNavigationForRole } from "@/lib/navigation";
 import { roleLabels } from "@/lib/rbac";
 import type { UserRole } from "@/lib/types";
 
+const sectionCopy: Record<string, { title: string; description: string }> = {
+  Dashboard: {
+    title: "Real-time release, quality, and compliance intelligence",
+    description:
+      "Coordinate sample intake, testing, inventory, and deviation management across manufacturing and life science labs."
+  },
+  "Sample management": {
+    title: "Track submissions, intake, and sample progress",
+    description:
+      "Follow every sample from client request through laboratory handling, review, and final disposition."
+  },
+  "Workflow automation": {
+    title: "Control how work moves across the lab",
+    description:
+      "Assign ownership, manage review stages, and keep operational handoffs visible for every role."
+  },
+  "Data entry": {
+    title: "Capture validated execution data",
+    description:
+      "Run assigned tests, enter results cleanly, and route outcomes into the QA/QC decision flow."
+  },
+  Inventory: {
+    title: "Maintain reagent, standard, and stock readiness",
+    description:
+      "Monitor quantities, update reorder thresholds, and reduce release delays caused by material gaps."
+  },
+  "Quality review": {
+    title: "Review results and manage quality decisions",
+    description:
+      "Approve or reject outcomes, track deviations, and keep client-facing quality updates aligned with the review state."
+  },
+  Reporting: {
+    title: "Generate, review, and release reports",
+    description:
+      "Move reports from draft to final release with clear ownership and client-ready distribution."
+  },
+  Account: {
+    title: "Manage account preferences and access",
+    description:
+      "Update password, notification preferences, and client-facing account details from one workspace."
+  }
+};
+
 export function Topbar({
   role,
   fullName,
@@ -42,6 +85,7 @@ export function Topbar({
   const activeChild = activeSection.children.find(
     (child) => pathname === child.href || pathname.startsWith(`${child.href}/`)
   );
+  const copy = sectionCopy[activeSection.label] ?? sectionCopy.Dashboard;
   const profileName = fullName ?? "Signed-in user";
   const profileEmail = email ?? "Supabase session active";
   const profileInitial = profileName.charAt(0).toUpperCase();
@@ -51,10 +95,10 @@ export function Topbar({
         <div className="min-w-0">
           <Badge>{role ? `${roleLabels[role]} access` : "Multi-site laboratory operations"}</Badge>
           <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-          Real-time release, quality, and compliance intelligence
+            {copy.title}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Coordinate sample intake, testing, inventory, and deviation management across manufacturing and life science labs.
+            {copy.description}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
             <span>{activeSection.label}</span>
@@ -70,13 +114,13 @@ export function Topbar({
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <div className="flex items-center gap-2">
-              <button
+              <Link
                 aria-label="View notifications"
                 className="rounded-full border border-border bg-white/70 p-3 text-slate-600 transition hover:bg-white"
-                type="button"
+                href="/notifications"
               >
                 <Bell className="h-4 w-4" />
-              </button>
+              </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

@@ -2,7 +2,8 @@ import { DataTableCard } from "@/components/dashboard/data-table-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { ModulePage } from "@/components/dashboard/module-page";
 import { QualityTable } from "@/components/dashboard/tables";
-import { qualityEvents } from "@/lib/demo-data";
+import { QcReviewPanel } from "@/components/workflows/qc-review-panel";
+import { getDashboardData, getQcReviewResults } from "@/lib/queries";
 
 const qcMetrics = [
   {
@@ -25,7 +26,9 @@ const qcMetrics = [
   }
 ];
 
-export default function QcDashboardPage() {
+export default async function QcDashboardPage() {
+  const [data, reviewResults] = await Promise.all([getDashboardData(), getQcReviewResults()]);
+
   return (
     <ModulePage
       eyebrow="QA / QC dashboard"
@@ -38,8 +41,9 @@ export default function QcDashboardPage() {
         ))}
       </div>
       <DataTableCard title="Deviation reports" description="Quality records currently driving action">
-        <QualityTable rows={qualityEvents} />
+        <QualityTable rows={data.qualityEvents} />
       </DataTableCard>
+      <QcReviewPanel reviewResults={reviewResults} qualityEvents={data.qualityEvents} />
     </ModulePage>
   );
 }

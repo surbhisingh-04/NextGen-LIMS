@@ -40,7 +40,11 @@ const basePlatformNav: NavSection[] = [
     label: "Sample management",
     icon: TestTube2,
     allowedRoles: ["admin", "lab_manager", "scientist_technician", "client"],
-    children: []
+    children: [
+      { href: "/samples/sample-list", label: "Sample list" },
+      { href: "/samples/sample-submission", label: "Submit sample", allowedRoles: ["client", "admin", "lab_manager", "scientist_technician"] },
+      { href: "/portal", label: "Client portal", allowedRoles: ["client"] }
+    ]
   },
   {
     href: "/workflows",
@@ -54,7 +58,32 @@ const basePlatformNav: NavSection[] = [
     label: "Data entry",
     icon: FlaskConical,
     allowedRoles: ["admin", "lab_manager", "scientist_technician"],
-    children: []
+    children: [
+      { href: "/testing/test-management", label: "Test management", allowedRoles: ["admin", "lab_manager"] },
+      { href: "/testing/result-entry", label: "Result entry", allowedRoles: ["admin", "lab_manager", "scientist_technician"] }
+    ]
+  },
+  {
+    href: "/inventory",
+    label: "Inventory",
+    icon: Boxes,
+    allowedRoles: ["admin", "lab_manager", "scientist_technician"],
+    children: [
+      { href: "/inventory/inventory-list", label: "Inventory list" },
+      { href: "/inventory/add-item", label: "Add item", allowedRoles: ["admin", "lab_manager"] },
+      { href: "/inventory/stock-alerts", label: "Stock alerts" }
+    ]
+  },
+  {
+    href: "/quality",
+    label: "Quality review",
+    icon: ShieldCheck,
+    allowedRoles: ["admin", "qa_qc_manager", "lab_manager"],
+    children: [
+      { href: "/qc/dashboard", label: "QA dashboard", allowedRoles: ["qa_qc_manager", "admin"] },
+      { href: "/qc/qc-monitoring", label: "QC monitoring", allowedRoles: ["qa_qc_manager", "admin"] },
+      { href: "/quality", label: "Quality events", allowedRoles: ["qa_qc_manager", "admin", "lab_manager"] }
+    ]
   },
   {
     href: "/instruments",
@@ -68,14 +97,22 @@ const basePlatformNav: NavSection[] = [
     label: "Reporting",
     icon: BarChart3,
     allowedRoles: ["admin", "lab_manager", "qa_qc_manager", "scientist_technician", "client"],
-    children: []
+    children: [
+      { href: "/reports/report-generator", label: "Generate report", allowedRoles: ["admin", "lab_manager", "scientist_technician"] },
+      { href: "/reports/report-history", label: "Report history" }
+    ]
   },
   {
     href: "/admin",
     label: "User management",
     icon: ShieldCheck,
     allowedRoles: ["admin"],
-    children: []
+    children: [
+      { href: "/admin/user-management", label: "User management" },
+      { href: "/admin/role-permissions", label: "Role permissions" },
+      { href: "/admin/audit-logs", label: "Audit logs" },
+      { href: "/admin/backup-recovery", label: "Backup recovery" }
+    ]
   },
   {
     href: "/account-settings",
@@ -92,7 +129,9 @@ export function getNavigationForRole(role: UserRole | null) {
     .map((section) => ({
       ...section,
       href: section.href === "/dashboard" ? getRoleDashboardPath(role) : section.href,
-      children: [] as NavChild[]
+      children: section.children.filter(
+        (child) => !child.allowedRoles || (role ? child.allowedRoles.includes(role) : false)
+      )
     }));
 }
 

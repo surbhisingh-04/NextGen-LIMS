@@ -7,30 +7,6 @@ const redirectRules: Array<{ from: string[]; to: string }> = [
     to: "/reports"
   },
   {
-    from: ["/samples/sample-list", "/samples/sample-detail", "/samples/sample-submission", "/batches", "/stability", "/portal"],
-    to: "/samples"
-  },
-  {
-    from: ["/testing/test-management", "/testing/result-entry", "/notebooks", "/methods", "/data-exchange"],
-    to: "/testing"
-  },
-  {
-    from: ["/inventory", "/inventory/inventory-list", "/inventory/add-item", "/inventory/stock-alerts", "/scheduling", "/environmental"],
-    to: "/dashboard"
-  },
-  {
-    from: ["/analytics", "/dashboard/overview-analytics", "/analytics/predictive", "/analytics/knowledge-graph"],
-    to: "/dashboard"
-  },
-  {
-    from: ["/qc", "/qc/qc-monitoring", "/qc/control-charts", "/quality", "/compliance", "/documents"],
-    to: "/dashboard"
-  },
-  {
-    from: ["/notifications"],
-    to: "/dashboard"
-  },
-  {
     from: ["/admin/user-management", "/admin/role-permissions", "/admin/audit-logs", "/admin/backup-recovery"],
     to: "/admin"
   }

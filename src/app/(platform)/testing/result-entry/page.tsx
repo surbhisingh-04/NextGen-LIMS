@@ -1,21 +1,17 @@
-import { DataTableCard } from "@/components/dashboard/data-table-card";
 import { ModulePage } from "@/components/dashboard/module-page";
-import { TestResultsTable } from "@/components/dashboard/tables";
-import { testResults } from "@/lib/demo-data";
+import { TechnicianWorkbench } from "@/components/workflows/technician-workbench";
+import { getTechnicianAssignments } from "@/lib/queries";
 
-export default function ResultEntryPage() {
+export default async function ResultEntryPage() {
+  const assignments = await getTechnicianAssignments();
+
   return (
     <ModulePage
       eyebrow="Result entry"
       title="Capture and review test outcomes"
       description="Enter numeric values or attachments, then route results for QC review and release."
     >
-      <DataTableCard
-        title="Results in review"
-        description="CQ review queue showing analyst, method, and current status"
-      >
-        <TestResultsTable rows={testResults} />
-      </DataTableCard>
+      <TechnicianWorkbench assignments={assignments} />
     </ModulePage>
   );
 }

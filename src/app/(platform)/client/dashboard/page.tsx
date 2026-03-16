@@ -1,8 +1,11 @@
+import Link from "next/link";
+
 import { DataTableCard } from "@/components/dashboard/data-table-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { ModulePage } from "@/components/dashboard/module-page";
+import { Button } from "@/components/ui/button";
 import { ReportsTable, SamplesTable } from "@/components/dashboard/tables";
-import { generatedReports, samples } from "@/lib/demo-data";
+import { getClientReports, getClientSamples } from "@/lib/queries";
 
 const clientMetrics = [
   {
@@ -25,13 +28,23 @@ const clientMetrics = [
   }
 ];
 
-export default function ClientDashboardPage() {
+export default async function ClientDashboardPage() {
+  const [samples, reports] = await Promise.all([getClientSamples(), getClientReports()]);
+
   return (
     <ModulePage
       eyebrow="Client dashboard"
       title="Submit samples, follow progress, and access released reports"
       description="Clients land in a dedicated external workspace with sample submission, sample status, reports, notifications, and account settings tailored to their organization."
     >
+      <div className="flex flex-wrap gap-3">
+        <Link href="/samples/sample-submission">
+          <Button>Submit New Sample</Button>
+        </Link>
+        <Link href="/portal">
+          <Button variant="outline">Open Client Portal</Button>
+        </Link>
+      </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {clientMetrics.map((metric) => (
           <MetricCard key={metric.label} metric={metric} />
@@ -42,7 +55,7 @@ export default function ClientDashboardPage() {
           <SamplesTable rows={samples.slice(0, 3)} />
         </DataTableCard>
         <DataTableCard title="Released reports" description="Reports currently available to client users">
-          <ReportsTable rows={generatedReports.filter((report) => report.audience === "Client portal")} />
+          <ReportsTable rows={reports.filter((report) => report.audience === "Client portal")} />
         </DataTableCard>
       </div>
     </ModulePage>

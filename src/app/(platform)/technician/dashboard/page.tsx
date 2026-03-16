@@ -2,7 +2,8 @@ import { DataTableCard } from "@/components/dashboard/data-table-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { ModulePage } from "@/components/dashboard/module-page";
 import { SamplesTable } from "@/components/dashboard/tables";
-import { samples, testResults } from "@/lib/demo-data";
+import { TechnicianWorkbench } from "@/components/workflows/technician-workbench";
+import { getTechnicianAssignedSamples, getTechnicianAssignments } from "@/lib/queries";
 
 const technicianMetrics = [
   {
@@ -25,9 +26,12 @@ const technicianMetrics = [
   }
 ];
 
-export default function TechnicianDashboardPage() {
-  const assignedSamples = samples.filter((sample) => sample.owner === "A. Patel" || sample.owner === "M. Lewis");
-  const pendingResults = testResults.filter((result) => result.status !== "pass");
+export default async function TechnicianDashboardPage() {
+  const [assignedSamples, assignments] = await Promise.all([
+    getTechnicianAssignedSamples(),
+    getTechnicianAssignments()
+  ]);
+  const pendingResults = assignments.filter((result) => result.status !== "approved");
 
   return (
     <ModulePage
@@ -44,8 +48,9 @@ export default function TechnicianDashboardPage() {
         title="Assigned samples"
         description={`Current work routed into the technician queue (pending results: ${pendingResults.length}).`}
       >
-        <SamplesTable rows={assignedSamples} />
+        <SamplesTable rows={assignedSamples.slice(0, 8)} />
       </DataTableCard>
+      <TechnicianWorkbench assignments={assignments} />
     </ModulePage>
   );
 }

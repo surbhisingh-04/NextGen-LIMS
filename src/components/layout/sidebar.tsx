@@ -18,6 +18,10 @@ export function Sidebar({ role }: { role: UserRole | null }) {
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  function isChildActive(href: string) {
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
   return (
     <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-72 shrink-0 overflow-hidden rounded-[32px] border border-white/60 bg-slate-950 px-4 py-5 text-slate-50 shadow-glow lg:flex lg:flex-col">
       <div className="mb-6 flex items-center gap-3">
@@ -52,6 +56,24 @@ export function Sidebar({ role }: { role: UserRole | null }) {
               />
               {section.label}
             </Link>
+            {isSectionActive(section.href) && section.children.length > 0 ? (
+              <div className="ml-8 space-y-1">
+                {section.children.map((child) => (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    className={cn(
+                      "block rounded-xl px-3 py-2 text-xs font-medium transition",
+                      isChildActive(child.href)
+                        ? "bg-white/15 text-white"
+                        : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    )}
+                  >
+                    {child.label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
           </div>
         ))}
       </nav>

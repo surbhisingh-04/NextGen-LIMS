@@ -2,10 +2,16 @@ import { DataTableCard } from "@/components/dashboard/data-table-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { ModulePage } from "@/components/dashboard/module-page";
 import { SamplesTable } from "@/components/dashboard/tables";
-import { getDashboardData } from "@/lib/queries";
+import { ManagerOperationsPanel } from "@/components/workflows/manager-operations-panel";
+import { getDashboardData, getLabCatalog, getManagerSubmissionQueue, getTechnicianProfiles } from "@/lib/queries";
 
 export default async function LabDashboardPage() {
-  const data = await getDashboardData();
+  const [data, submissions, technicians, catalog] = await Promise.all([
+    getDashboardData(),
+    getManagerSubmissionQueue(),
+    getTechnicianProfiles(),
+    getLabCatalog()
+  ]);
 
   return (
     <ModulePage
@@ -21,6 +27,13 @@ export default async function LabDashboardPage() {
       <DataTableCard title="Pipeline watchlist" description="Samples currently shaping lab priorities">
         <SamplesTable rows={data.samples} />
       </DataTableCard>
+      <ManagerOperationsPanel
+        submissions={submissions}
+        technicians={technicians}
+        laboratories={catalog.laboratories}
+        workflows={catalog.workflows}
+        inventory={data.inventoryItems}
+      />
     </ModulePage>
   );
 }

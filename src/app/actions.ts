@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 
 import { getAuthContext } from "@/lib/auth";
@@ -17,7 +18,16 @@ const sampleSchema = z.object({
   batchNumber: z.string().min(2),
   workflow: z.string().min(2),
   lab: z.string().min(2),
-  priority: z.enum(["low", "medium", "high", "critical"])
+  priority: z.enum(["low", "medium", "high", "critical"]),
+  dueAt: z.string().optional()
+});
+
+const clientSampleSchema = z.object({
+  materialName: z.string().min(2),
+  batchNumber: z.string().min(2),
+  priority: z.enum(["low", "medium", "high", "critical"]),
+  dueAt: z.string().optional(),
+  notes: z.string().max(2000).optional()
 });
 
 const loginSchema = z.object({
@@ -366,17 +376,200 @@ export async function logoutAction() {
 }
 
 export async function registerSampleAction(formData: FormData) {
-  const payload = sampleSchema.parse({
+  const authContext = await getAuthContext();
+
+  if (!authContext.isAuthenticated || !authContext.role || !authContext.organizationId) {
+    redirect("/login?error=Please%20log%20in%20before%20submitting%20a%20sample.");
+  }
+
+  if (!hasSupabaseEnv) {
+    redirect("/samples/sample-submission?error=Supabase%20is%20not%20configured.%20Client%20submission%20cannot%20be%20saved%20yet.");
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  if (!supabase) {
+    redirect("/samples/sample-submission?error=Unable%20to%20initialize%20Supabase%20for%20sample%20submission.");
+  }
+
+  if (authContext.role === "client") {
+    const payload = clientSampleSchema.safeParse({
+      materialName: formData.get("materialName"),
+      batchNumber: formData.get("batchNumber"),
+      priority: formData.get("priority"),
+      dueAt: formData.get("dueAt"),
+      notes: formData.get("notes")
+    });
+
+    if (!payload.success) {
+      redirect("/samples/sample-submission?error=Enter%20the%20material%20name%2C%20batch%20number%2C%20priority%2C%20and%20optional%20notes%20before%20submitting.");
+    }
+
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login?error=Your%20session%20expired.%20Please%20sign%20in%20again.");
+    }
+
+    const requestPayload = {
+      materialName: payload.data.materialName,
+      batchNumber: payload.data.batchNumber,
+      priority: payload.data.priority,
+      dueAt: payload.data.dueAt || null,
+      notes: payload.data.notes?.trim() || null,
+      submittedBy: authContext.fullName ?? authContext.email ?? "Client user"
+    };
+
+    const portalRequestResult = await supabase
+      .from("client_portal_requests")
+      .insert({
+        organization_id: authContext.organizationId,
+        external_client_id: user.id,
+        request_type: "submission",
+        status: "submitted",
+        payload: requestPayload
+      })
+      .select("id")
+      .single();
+
+    if (portalRequestResult.error || !portalRequestResult.data) {
+      redirect(
+        `/samples/sample-submission?error=${encodeURIComponent(
+          portalRequestResult.error?.message ?? "Unable to create the client submission request."
+        )}`
+      );
+    }
+
+    if (hasSupabaseAdminEnv) {
+      const supabaseAdmin = createSupabaseAdminClient();
+
+      if (supabaseAdmin) {
+        const [laboratoryResult, workflowResult] = await Promise.all([
+          supabaseAdmin
+            .from("laboratories")
+            .select("id, name")
+            .eq("organization_id", authContext.organizationId)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle(),
+          supabaseAdmin
+            .from("workflow_stages")
+            .select("id, name")
+            .eq("organization_id", authContext.organizationId)
+            .order("sort_order", { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        ]);
+
+        if (laboratoryResult.data) {
+          const generatedSampleCode = `CL-${new Date()
+            .toISOString()
+            .slice(0, 10)
+            .replaceAll("-", "")}-${randomUUID().slice(0, 6).toUpperCase()}`;
+
+          const sampleInsertResult = await supabaseAdmin
+            .from("samples")
+            .insert({
+              organization_id: authContext.organizationId,
+              laboratory_id: laboratoryResult.data.id,
+              workflow_stage_id: workflowResult.data?.id ?? null,
+              sample_code: generatedSampleCode,
+              material_name: payload.data.materialName,
+              batch_number: payload.data.batchNumber,
+              workflow_name: workflowResult.data?.name ?? "Client submission intake",
+              owner_name: authContext.fullName ?? authContext.email ?? "Client submission",
+              priority: payload.data.priority,
+              status: "registered",
+              due_at: payload.data.dueAt || null,
+              external_client_id: user.id,
+              metadata: {
+                source: "client_portal",
+                portal_request_id: portalRequestResult.data.id,
+                notes: payload.data.notes?.trim() || null
+              }
+            })
+            .select("id")
+            .single();
+
+          if (!sampleInsertResult.error && sampleInsertResult.data) {
+            await supabaseAdmin
+              .from("client_portal_requests")
+              .update({
+                sample_id: sampleInsertResult.data.id,
+                payload: {
+                  ...requestPayload,
+                  generatedSampleId: sampleInsertResult.data.id,
+                  generatedSampleCode
+                }
+              })
+              .eq("id", portalRequestResult.data.id);
+          }
+        }
+      }
+    }
+
+    revalidatePath("/portal");
+    revalidatePath("/client/dashboard");
+    revalidatePath("/samples");
+    revalidatePath("/dashboard");
+
+    redirect("/portal?message=Sample%20submission%20received.%20Your%20request%20is%20now%20visible%20in%20the%20client%20portal.");
+  }
+
+  const payload = sampleSchema.safeParse({
     sampleCode: formData.get("sampleCode"),
     materialName: formData.get("materialName"),
     batchNumber: formData.get("batchNumber"),
     workflow: formData.get("workflow"),
     lab: formData.get("lab"),
-    priority: formData.get("priority")
+    priority: formData.get("priority"),
+    dueAt: formData.get("dueAt")
   });
 
-  console.info("Register sample", payload);
+  if (!payload.success) {
+    redirect("/samples/sample-submission?error=Enter%20the%20sample%20code%2C%20material%20name%2C%20batch%20number%2C%20workflow%2C%20lab%2C%20and%20priority.");
+  }
+
+  const [laboratoryResult, workflowResult] = await Promise.all([
+    supabase
+      .from("laboratories")
+      .select("id, name")
+      .eq("organization_id", authContext.organizationId)
+      .ilike("name", payload.data.lab)
+      .maybeSingle(),
+    supabase
+      .from("workflow_stages")
+      .select("id, name")
+      .eq("organization_id", authContext.organizationId)
+      .ilike("name", payload.data.workflow)
+      .maybeSingle()
+  ]);
+
+  if (!laboratoryResult.data) {
+    redirect("/samples/sample-submission?error=Assigned%20laboratory%20was%20not%20found%20for%20your%20organization.");
+  }
+
+  const insertResult = await supabase.from("samples").insert({
+    organization_id: authContext.organizationId,
+    laboratory_id: laboratoryResult.data.id,
+    workflow_stage_id: workflowResult.data?.id ?? null,
+    sample_code: payload.data.sampleCode,
+    material_name: payload.data.materialName,
+    batch_number: payload.data.batchNumber,
+    workflow_name: payload.data.workflow,
+    owner_name: authContext.fullName ?? authContext.email ?? "Lab user",
+    priority: payload.data.priority,
+    status: "registered",
+    due_at: payload.data.dueAt || null
+  });
+
+  if (insertResult.error) {
+    redirect(`/samples/sample-submission?error=${encodeURIComponent(insertResult.error.message)}`);
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/samples");
+  redirect("/samples/sample-list?message=Sample%20intake%20record%20created%20successfully.");
 }
